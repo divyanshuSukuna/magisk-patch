@@ -14,11 +14,11 @@ jobs:
           wget -q https://github.com/topjohnwu/Magisk/releases/download/v28.1/Magisk-v28.1.apk -O magisk.apk
       - name: Patch boot.img
         run: |
-          unzip -q magisk.apk lib/arm64-v8a/libmagiskboot.so -d magisk
-          chmod +x magisk/lib/arm64-v8a/libmagiskboot.so
-          magisk/lib/arm64-v8a/libmagiskboot.so unpack boot.img
-          magisk/lib/arm64-v8a/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
-          magisk/lib/arm64-v8a/libmagiskboot.so repack ramdisk.cpio magisk_patched.img
+          unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
+          chmod +x magisk/lib/x86_64/libmagiskboot.so
+          magisk/lib/x86_64/libmagiskboot.so unpack boot.img
+          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
+          magisk/lib/x86_64/libmagiskboot.so repack ramdisk.cpio magisk_patched.img
       - name: Upload patched boot.img
         uses: actions/upload-artifact@v4
         with:
