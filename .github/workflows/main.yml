@@ -9,9 +9,11 @@ jobs:
       - name: Download boot.img
         run: |
           curl -L "https://github.com/divyanshuSukuna/magisk-patch/raw/refs/heads/main/boot.img?download=" -o boot.img
-      - name: Download Magisk
+      - name: Download Magisk Canary (latest)
         run: |
-          wget -q https://github.com/topjohnwu/Magisk/releases/download/v28.1/Magisk-v28.1.apk -O magisk.apk
+          # Get latest canary release URL
+          CANARY_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases | grep -o '"browser_download_url": "[^"]*Magisk-[^"]*\.apk"' | head -1 | cut -d'"' -f4)
+          wget -q "$CANARY_URL" -O magisk.apk
       - name: Patch boot.img
         run: |
           unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
