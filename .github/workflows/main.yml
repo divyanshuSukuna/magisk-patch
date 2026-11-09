@@ -1,0 +1,26 @@
+name: Patch boot.img with Magisk
+on:
+  workflow_dispatch:
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download boot.img
+        run: |
+          curl -L "https://github.com/divyanshuSukuna/magisk-patch/raw/refs/heads/main/boot.img?download=" -o boot.img
+      - name: Download Magisk
+        run: |
+          wget -q https://github.com/topjohnwu/Magisk/releases/download/v28.1/Magisk-v28.1.apk -O magisk.apk
+      - name: Patch boot.img
+        run: |
+          unzip -q magisk.apk lib/arm64-v8a/libmagiskboot.so -d magisk
+          chmod +x magisk/lib/arm64-v8a/libmagiskboot.so
+          magisk/lib/arm64-v8a/libmagiskboot.so unpack boot.img
+          magisk/lib/arm64-v8a/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
+          magisk/lib/arm64-v8a/libmagiskboot.so repack ramdisk.cpio magisk_patched.img
+      - name: Upload patched boot.img
+        uses: actions/upload-artifact@v4
+        with:
+          name: magisk_patched.img
+          path: magisk_patched.img
