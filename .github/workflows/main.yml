@@ -20,20 +20,52 @@ jobs:
         run: |
           cd aik
           ./unpackimg_x64.sh ../boot.img
+      - name: Repack ramdisk to cpio (for patching)
+        run: |
+          cd aik
+          # Repack the ramdisk directory to cpio (using original compression)
+          ramdiskcomp=$(cat split_img/*-ramdiskcomp)
+          echo "Compression: $ramdiskcomp"
+          repackcmd="$ramdiskcomp"
+          compext=$ramdiskcomp
+          case $ramdiskcomp in
+            gzip) compext=gz;;
+            lzop) compext=lzo;;
+            xz) repackcmd="xz -1 -Ccrc32";;
+            lzma) repackcmd="xz -Flzma";;
+            bzip2) compext=bz2;;
+            lz4) repackcmd="$PWD/bin/lz4_x64 -l stdin stdout";;
+          esac
+          cd ramdisk
+          find . | cpio -o -H newc | $repackcmd > ../ramdisk-new.cpio.$compext
+          cd ..
+          # Use this as the ramdisk.cpio for patching
+          cp ramdisk-new.cpio.$compext ramdisk.cpio
       - name: Patch ramdisk with Magisk
         run: |
           # Download latest Magisk APK
           CANARY_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases | grep -o '"browser_download_url": "[^"]*Magisk-[^"]*\.apk"' | head -1 | cut -d'"' -f4)
-          wget -q "$CANARY_URL" -O ../magisk.apk
-          unzip -q ../magisk.apk lib/x86_64/libmagiskboot.so -d ../magisk
-          chmod +x ../magisk/lib/x86_64/libmagiskboot.so
-          # Patch ramdisk
-          ../magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
-          # Copy patched ramdisk back
-          cp ramdisk.cpio aik/ramdisk.cpio
-      - name: Repack boot.img with AIK
+          wget -q "$CANARY_URL" -O magisk.apk
+          unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
+          chmod +x magisk/lib/x86_64/libmagiskboot.so
+          # Patch the cpio
+          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
+          # Copy patched ramdisk back to aik
+          cp ramdisk.cpio aik/ramdisk-new.cpio.$(cat aik/split_img/*-ramdiskcomp | sed 's/gzip/gz/;s/lzop/lzo/;s/bzip2/bz2/;s/lz4/lz4/')
+      - name: Repack boot.img with AIK (using patched ramdisk)
         run: |
           cd aik
+          # Replace the ramdisk in split_img with patched one
+          ramdiskcomp=$(cat split_img/*-ramdiskcomp)
+          case $ramdiskcomp in
+            gzip) compext=gz;;
+            lzop) compext=lzo;;
+            xz) compext=xz;;
+            lzma) compext=lzma;;
+            bzip2) compext=bz2;;
+            lz4) compext=lz4;;
+          esac
+          cp ../ramdisk.cpio "split_img/$(basename ../boot.img)-ramdisk.cpio.$compext"
           ./repackimg_x64.sh
           mv image-new.img ../magisk_patched.img
       - name: Upload patched boot.img
