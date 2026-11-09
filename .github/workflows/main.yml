@@ -8,12 +8,12 @@ jobs:
     steps:
       - name: Download boot.img
         run: |
-          curl -L "https://gofile.io/d/ZdywHvsu" -o boot.img
-      - name: Download AIK (Android Image Kitchen)
+          curl -L "https://github.com/divyanshuSukuna/magisk-patch/raw/refs/heads/main/boot.img?download=" -o boot.img
+      - name: Download AIK-Linux
         run: |
-          wget -q https://github.com/osm0sis/AIK-Linux/archive/refs/heads/master.zip -O aik.zip
+          wget -q https://github.com/osm0sis/Android-Image-Kitchen/archive/refs/heads/AIK-Linux.zip -O aik.zip
           unzip -q aik.zip
-          mv AIK-Linux-master aik
+          mv Android-Image-Kitchen-AIK-Linux aik
           cd aik
           chmod +x *.sh
           sudo ./setup.sh
@@ -23,7 +23,7 @@ jobs:
           ./unpackimg.sh ../boot.img
       - name: Patch ramdisk with Magisk
         run: |
-          # Download Magisk canary
+          # Download latest Magisk APK
           CANARY_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases | grep -o '"browser_download_url": "[^"]*Magisk-[^"]*\.apk"' | head -1 | cut -d'"' -f4)
           wget -q "$CANARY_URL" -O ../magisk.apk
           unzip -q ../magisk.apk lib/x86_64/libmagiskboot.so -d ../magisk
