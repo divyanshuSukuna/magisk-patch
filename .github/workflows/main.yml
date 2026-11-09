@@ -16,29 +16,40 @@ jobs:
           mv AIK-Linux-x32-x64-master aik
           cd aik
           chmod +x *.sh bin/*_x64 bin/magic
-      - name: Unpack, Patch, Repack (all in one step)
+      - name: Unpack, Patch, Repack (with debug output)
         run: |
           set -e
           cd aik
-          # Unpack
+          echo "=== UNPACKING ==="
           ./unpackimg_x64.sh ../boot.img
           
-          # Ramdisk is gzip compressed - decompress for patching
-          gunzip -c split_img/*-ramdisk.cpio.gz > ramdisk.cpio
+          echo "=== CHECKING FILES ==="
+          ls -la split_img/
+          ls -la ramdisk/
           
-          # Download Magisk & patch
+          echo "=== DECOMPRESSING RAMDISK ==="
+          gunzip -c split_img/*-ramdisk.cpio.gz > ramdisk.cpio
+          echo "ramdisk.cpio size: $(wc -c < ramdisk.cpio)"
+          
+          echo "=== DOWNLOADING MAGISK ==="
           CANARY_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases | grep -o '"browser_download_url": "[^"]*Magisk-[^"]*\.apk"' | head -1 | cut -d'"' -f4)
+          echo "Magisk URL: $CANARY_URL"
           wget -q "$CANARY_URL" -O magisk.apk
           unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
           chmod +x magisk/lib/x86_64/libmagiskboot.so
+          
+          echo "=== PATCHING RAMDISK ==="
           magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
+          echo "Patch exit code: $?"
           
-          # Recompress patched ramdisk
+          echo "=== RECOMPRESSING RAMDISK ==="
           gzip -c ramdisk.cpio > split_img/$(basename ../boot.img)-ramdisk.cpio.gz
+          echo "Recompressed size: $(wc -c < split_img/$(basename ../boot.img)-ramdisk.cpio.gz)"
           
-          # Repack boot image
+          echo "=== REPACKING BOOT IMAGE ==="
           ./repackimg_x64.sh
           mv image-new.img ../magisk_patched.img
+          echo "=== SUCCESS ==="
       - name: Upload patched boot.img
         uses: actions/upload-artifact@v4
         with:
