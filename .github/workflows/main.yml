@@ -1,4 +1,4 @@
-name: Patch boot.img with Magisk
+name: Patch boot.img with AIK + Magisk
 on:
   workflow_dispatch:
 
@@ -9,18 +9,32 @@ jobs:
       - name: Download boot.img
         run: |
           curl -L "https://github.com/divyanshuSukuna/magisk-patch/raw/refs/heads/main/boot.img?download=" -o boot.img
-      - name: Download Magisk Canary (latest)
+      - name: Setup AIK (Android Image Kitchen)
         run: |
-          # Get latest canary release URL
+          git clone https://github.com/osm0sis/AIK-Linux.git aik
+          cd aik
+          chmod +x *.sh
+          sudo ./setup.sh
+      - name: Unpack boot.img with AIK
+        run: |
+          cd aik
+          ./unpackimg.sh ../boot.img
+      - name: Patch ramdisk with Magisk
+        run: |
+          # Download Magisk canary
           CANARY_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases | grep -o '"browser_download_url": "[^"]*Magisk-[^"]*\.apk"' | head -1 | cut -d'"' -f4)
-          wget -q "$CANARY_URL" -O magisk.apk
-      - name: Patch boot.img
+          wget -q "$CANARY_URL" -O ../magisk.apk
+          unzip -q ../magisk.apk lib/x86_64/libmagiskboot.so -d ../magisk
+          chmod +x ../magisk/lib/x86_64/libmagiskboot.so
+          # Patch ramdisk
+          ../magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
+          # Copy patched ramdisk back
+          cp ramdisk.cpio aik/ramdisk.cpio
+      - name: Repack boot.img with AIK
         run: |
-          unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
-          chmod +x magisk/lib/x86_64/libmagiskboot.so
-          magisk/lib/x86_64/libmagiskboot.so unpack boot.img
-          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
-          magisk/lib/x86_64/libmagiskboot.so repack ramdisk.cpio magisk_patched.img
+          cd aik
+          ./repackimg.sh
+          mv image-new.img ../magisk_patched.img
       - name: Upload patched boot.img
         uses: actions/upload-artifact@v4
         with:
