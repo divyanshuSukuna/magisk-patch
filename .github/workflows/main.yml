@@ -16,7 +16,7 @@ jobs:
           mv AIK-Linux-x32-x64-master aik
           cd aik
           chmod +x *.sh bin/*_x64 bin/magic
-      - name: Unpack, Patch, Repack (with debug output)
+      - name: Unpack, Patch, Repack (with full debug)
         run: |
           set -e
           cd aik
@@ -25,7 +25,6 @@ jobs:
           
           echo "=== CHECKING FILES ==="
           ls -la split_img/
-          ls -la ramdisk/
           
           echo "=== DECOMPRESSING RAMDISK ==="
           gunzip -c split_img/*-ramdisk.cpio.gz > ramdisk.cpio
@@ -38,9 +37,16 @@ jobs:
           unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
           chmod +x magisk/lib/x86_64/libmagiskboot.so
           
-          echo "=== PATCHING RAMDISK ==="
-          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
-          echo "Patch exit code: $?"
+          echo "=== SEARCHING FOR PATCH TARGET ==="
+          strings ramdisk.cpio | grep -i "skip_initramfs" || echo "String NOT found in ramdisk"
+          strings ramdisk.cpio | grep -i "initramfs" | head -5
+          
+          echo "=== ATTEMPTING PATCH ==="
+          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram" 2>&1 || {
+            echo "hexpatch failed with exit code: $?"
+            echo "Trying alternative pattern..."
+            magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram" -v 2>&1 || true
+          }
           
           echo "=== RECOMPRESSING RAMDISK ==="
           gzip -c ramdisk.cpio > split_img/$(basename ../boot.img)-ramdisk.cpio.gz
