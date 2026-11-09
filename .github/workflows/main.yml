@@ -23,31 +23,18 @@ jobs:
           # Unpack
           ./unpackimg_x64.sh ../boot.img
           
-          # Determine compression
-          ramdiskcomp=$(cat split_img/*-ramdiskcomp)
-          case $ramdiskcomp in
-            gzip) compext=gz; repackcmd="gzip";;
-            lzop) compext=lzo; repackcmd="lzop";;
-            xz) compext=xz; repackcmd="xz -1 -Ccrc32";;
-            lzma) compext=lzma; repackcmd="xz -Flzma";;
-            bzip2) compext=bz2; repackcmd="bzip2";;
-            lz4) compext=lz4; repackcmd="$PWD/bin/lz4_x64 -l stdin stdout";;
-          esac
-          
-          # Repack ramdisk to cpio
-          cd ramdisk
-          find . | cpio -o -H newc | $repackcmd > ../ramdisk.cpio.$compext
-          cd ..
+          # Ramdisk is gzip compressed - decompress for patching
+          gunzip -c split_img/*-ramdisk.cpio.gz > ramdisk.cpio
           
           # Download Magisk & patch
           CANARY_URL=$(curl -s https://api.github.com/repos/topjohnwu/Magisk/releases | grep -o '"browser_download_url": "[^"]*Magisk-[^"]*\.apk"' | head -1 | cut -d'"' -f4)
           wget -q "$CANARY_URL" -O magisk.apk
           unzip -q magisk.apk lib/x86_64/libmagiskboot.so -d magisk
           chmod +x magisk/lib/x86_64/libmagiskboot.so
-          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio.$compext "skip_initramfs" "want_initram"
+          magisk/lib/x86_64/libmagiskboot.so hexpatch ramdisk.cpio "skip_initramfs" "want_initram"
           
-          # Put patched ramdisk back for AIK repack
-          cp ramdisk.cpio.$compext "split_img/$(basename ../boot.img)-ramdisk.cpio.$compext"
+          # Recompress patched ramdisk
+          gzip -c ramdisk.cpio > split_img/$(basename ../boot.img)-ramdisk.cpio.gz
           
           # Repack boot image
           ./repackimg_x64.sh
