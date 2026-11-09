@@ -9,18 +9,17 @@ jobs:
       - name: Download boot.img
         run: |
           curl -L "https://github.com/divyanshuSukuna/magisk-patch/raw/refs/heads/main/boot.img?download=" -o boot.img
-      - name: Download AIK-Linux
+      - name: Download AIK-Linux-x64 (with binaries)
         run: |
-          wget -q https://github.com/osm0sis/Android-Image-Kitchen/archive/refs/heads/AIK-Linux.zip -O aik.zip
+          wget -q https://github.com/ndrancs/AIK-Linux-x32-x64/archive/refs/heads/master.zip -O aik.zip
           unzip -q aik.zip
-          mv Android-Image-Kitchen-AIK-Linux aik
+          mv AIK-Linux-x32-x64-master aik
           cd aik
-          chmod +x *.sh
-          sudo ./setup.sh
+          chmod +x *.sh bin/*_x64 bin/magic
       - name: Unpack boot.img with AIK
         run: |
           cd aik
-          ./unpackimg.sh ../boot.img
+          ./unpackimg_x64.sh ../boot.img
       - name: Patch ramdisk with Magisk
         run: |
           # Download latest Magisk APK
@@ -35,7 +34,7 @@ jobs:
       - name: Repack boot.img with AIK
         run: |
           cd aik
-          ./repackimg.sh
+          ./repackimg_x64.sh
           mv image-new.img ../magisk_patched.img
       - name: Upload patched boot.img
         uses: actions/upload-artifact@v4
