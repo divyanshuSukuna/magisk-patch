@@ -9,9 +9,11 @@ jobs:
       - name: Download boot.img
         run: |
           curl -L "https://github.com/divyanshuSukuna/magisk-patch/raw/refs/heads/main/boot.img?download=" -o boot.img
-      - name: Setup AIK (Android Image Kitchen)
+      - name: Download AIK (Android Image Kitchen)
         run: |
-          git clone https://github.com/osm0sis/AIK-Linux.git aik
+          wget -q https://github.com/osm0sis/AIK-Linux/archive/refs/heads/master.zip -O aik.zip
+          unzip -q aik.zip
+          mv AIK-Linux-master aik
           cd aik
           chmod +x *.sh
           sudo ./setup.sh
